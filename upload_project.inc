@@ -462,12 +462,6 @@ function upload_design_files_form($form, &$form_state)
         '#type' => 'hidden',
         '#default_value' => $proposal_data->id
     );
-    $form['title'] = array(
-        '#type' => 'item',
-        '#markup' => t('Introduction'),
-        '#title' => t('Title'),
-        '#default_value' => t('Introduction')
-    );
     $form['project_design_files']  = array(
         '#type' => 'file',
         '#title' => t('Upload the project file'),
@@ -494,6 +488,7 @@ function upload_design_files_form($form, &$form_state)
     $form['project_design_files']  = array(
         '#type' => 'file',
         '#title' => t('Upload the project file'),
+        '#required' => TRUE,
         '#description' => t('Separate filenames with underscore. No spaces or any special characters allowed in filename.') . '<br />' . t('<span style="color:red;">Allowed file extensions : ') . variable_get('project_design_files_extensions', '') . '</span>',
     );
     $form['submit'] = array(
