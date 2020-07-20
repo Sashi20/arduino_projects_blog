@@ -508,6 +508,39 @@ function upload_design_files_form($form, &$form_state)
     return $form;
   }
 
+  function upload_design_files_form_validate($form, $form_state){
+    foreach ($_FILES['files']['name'] as $file_form_name => $file_name)
+        {
+            if ($file_name)
+            {
+                /* checking file type */
+                /*if (strstr($file_form_name, 'sample'))
+                    $file_type = 'S';
+                else
+                    $file_type = 'U';
+                
+                /*switch ($file_type)
+                {
+                    case 'S':
+                        $allowed_extensions_str = variable_get('textbook_companion_source_extensions', '');
+                        break;
+                } *///$file_type
+                $allowed_extensions_str = variable_get('project_design_files_extensions', '');
+                $allowed_extensions = explode(',', $allowed_extensions_str);
+                $fnames = explode('.', strtolower($_FILES['files']['name'][$file_form_name]));
+                $temp_extension = end($fnames);
+                if (!in_array($temp_extension, $allowed_extensions))
+                    form_set_error($file_form_name, t('Only file with ' . $allowed_extensions_str . ' extensions can be uploaded.'));
+                if ($_FILES['files']['size'][$file_form_name] <= 0)
+                    form_set_error($file_form_name, t('File size cannot be zero.'));
+                /* check if valid file name */
+                if (!arduino_projects_blog_check_valid_filename($_FILES['files']['name'][$file_form_name]))
+                    form_set_error($file_form_name, t('Invalid file name specified. Only alphabets and numbers are allowed as a valid filename.'));
+            } //$file_name
+        } //$_FILES['files']['name'] as $file_form_name => $file_name 
+    return $form_state;
+  }
+
 function upload_design_files_form_submit($form, &$form_state){
     global $user;
     $v = $form_state['values'];
