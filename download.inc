@@ -207,3 +207,29 @@ function arduino_projects_blog_download_step_gifs()
 		drupal_goto('arduino-projects/code-approval/bulk');
 	}
 }
+
+function arduino_projects_blog_download_project_design_file()
+  {
+    $id = arg(3);
+    $root_path = arduino_projects_blog_files_path();
+    $query = db_select('arduino_projects_blog_project_files');
+    $query->fields('arduino_projects_blog_project_files');
+    $query->condition('id', $id);
+    $query->range(0, 1);
+    $result = $query->execute();
+    $example_file_data = $result->fetchObject();
+    $query = db_select('arduino_projects_blog_proposal');
+    $query->fields('arduino_projects_blog_proposal');
+    $query->condition('id', $proposal_id);
+    $query->range(0, 1);
+    $result = $query->execute();
+    $proposal_data = $result->fetchObject();
+    $filename = $example_file_data->filename;
+   // var_dump($root_path . $proposal_data->directory_name .  $example_file_data->filepath);die;
+    ob_clean();
+    header('Content-Type: ' . $example_file_data->filemime);
+    header('Content-disposition: attachment; filename="' . $filename . '"');
+    header('Content-Length: ' . filesize($root_path . $proposal_data->directory_name . $example_file_data->filepath));
+    
+    readfile($root_path . $proposal_data->directory_name . $example_file_data->filepath);
+  }

@@ -113,12 +113,18 @@ function list_steps()
         $query->condition('step_id', $step_data->id);
         $result = $query->execute();
         $example_data = $result->fetchObject();
+        if($step_data->approval_status == 0){
+            $action = l('Edit', 'arduino-projects/code/step/edit/' . $step_data->id) . ' | ' .l('View', 'arduino-projects/code/view-step/' . $step_data->id);
+        }
+        else{
+            $action = l('View', 'arduino-projects/code/view-step/' . $step_data->id);
+        }
         $step_rows[] = array(
             $step_data->number,
             $step_data->name,
             //$step_data->name . ' (' . l('Edit', 'arduino-projects/code/step/edit/' . $step_data->id) . ')',
             //$example_data->example_count,
-            l('Edit', 'arduino-projects/code/step/edit/' . $step_data->id) . ' | ' .l('View', 'arduino-projects/code/view-step/' . $step_data->id)
+           $action
         );
       }
     /* check if there are any steps */
@@ -208,9 +214,13 @@ function update_introduction_form($form, &$form_state)
       $query_intro = db_select('arduino_projects_blog_introduction_step');
       $query_intro->fields('arduino_projects_blog_introduction_step');
       $query_intro->condition('proposal_id', $proposal_data->id);
-      $query_intro->condition('approval_status', 0);
+      //$query_intro->condition('approval_status', 0);
       $query_intro_q = $query_intro->execute();
       $query_intro_data = $query_intro_q->fetchObject();
+      if($query_intro_data->approval_status == 1){
+        drupal_set_message(t('The Introduction submitted is approved, you cannot edit this anymore.'));
+        drupal_goto('arduino-projects/code');
+      }
     /*$preference_q = db_query("SELECT * FROM {arduino_projects_blog_preference} WHERE proposal_id = %d AND approval_status = 1 LIMIT 1", $proposal_data->id);
     $proposal_data = db_fetch_object($preference_q);*/
     /*$query = db_select('arduino_projects_blog_preference');
@@ -436,9 +446,13 @@ function upload_design_files_form($form, &$form_state)
       $query = db_select('arduino_projects_blog_project_files');
       $query->fields('arduino_projects_blog_project_files');
       $query->condition('proposal_id', $proposal_data->id);
-      $query->condition('approval_status', 0);
+      //$query->condition('approval_status', 0);
       $query_q = $query->execute();
       $query_data = $query_q->fetchObject();
+      if($query_data->approval_status == 1){
+        drupal_set_message(t('The design file submitted by you has been approved, you cannot edit anymore'));
+        drupal_goto('arduino-projects/code');
+      }
     /*$preference_q = db_query("SELECT * FROM {arduino_projects_blog_preference} WHERE proposal_id = %d AND approval_status = 1 LIMIT 1", $proposal_data->id);
     $proposal_data = db_fetch_object($preference_q);*/
     /*$query = db_select('arduino_projects_blog_preference');

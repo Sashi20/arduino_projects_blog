@@ -251,6 +251,31 @@ function arduino_projects_blog_menu()
 		'weight' => 2,
 		'file' => 'code_approval.inc'
 	);
+	$items['arduino-projects/code-approval/project-design-files'] = array(
+		'title' => 'Project Design Files Approval',
+		'description' => 'Project Design Files Approval',
+		'page callback' => 'project_design_files_approval',
+		'access arguments' => array(
+			'arduino projects bulk manage code'
+		),
+		'type' => MENU_LOCAL_TASK,
+		'weight' => 3,
+		'file' => 'code_approval.inc'
+	);
+	$items['arduino-projects/code-approval/approve-design-files'] = array(
+		'title' => 'Project Design files Approval form',
+		'description' => 'Project Design files Approval form',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array(
+			'project_design_files_approval_form'
+		),
+		'access arguments' => array(
+			'arduino projects bulk manage code'
+		),
+		'type' => MENU_NORMAL_ITEM,
+		//'weight' => 1,
+		'file' => 'code_approval.inc'
+	);
 	$items['arduino-projects/code-approval/bulk'] = array(
 		'title' => 'Bulk Manage',
 		'description' => 'Bulk Manage',
@@ -262,7 +287,7 @@ function arduino_projects_blog_menu()
 			'arduino projects bulk manage code'
 		),
 		'type' => MENU_LOCAL_TASK,
-		'weight' => 3,
+		'weight' => 4,
 		'file' => 'code_approval.inc'
 	);
 	$items['arduino-projects/abstract-approval/bulk'] = array(
@@ -324,6 +349,16 @@ function arduino_projects_blog_menu()
 		'title' => 'Code Download',
 		'description' => 'Code Download',
 		'page callback' => 'arduino_projects_blog_download_solution_file',
+		'access arguments' => array(
+			'arduino projects download code'
+		),
+		'type' => MENU_CALLBACK,
+		'file' => 'download.inc'
+	);
+	$items['arduino-projects/download/project-design-file'] = array(
+		'title' => 'Project Design File Download',
+		'description' => 'Project Design File Download',
+		'page callback' => 'arduino_projects_blog_download_project_design_file',
 		'access arguments' => array(
 			'arduino projects download code'
 		),

@@ -7,13 +7,14 @@ function introduction_approval()
     $query->fields('arduino_projects_blog_proposal');
     $query->condition('approval_status', 1);
     $query->condition('submitted_steps', 1);
+    $query->condition('is_intro_approved',0);
     $proposal_q = $query->execute();
     while($proposal_data = $proposal_q->fetchObject()){
     $intro_query = db_select('arduino_projects_blog_introduction_step');
     $intro_query->fields('arduino_projects_blog_introduction_step');
     $intro_query->condition('proposal_id', $proposal_data->id);
     $intro_query->condition('is_submitted', 1);
-    $intro_query->condition('approval_status', 0);
+    //$intro_query->condition('approval_status', 0);
     $intro_query_result  = $intro_query->execute();
     $intro_query_data = $intro_query_result->fetchObject();
          $rows[] = array(
@@ -143,9 +144,18 @@ function introduction_approval_form_submit($form, &$form_state){
     $ex_data = $form_state['values'];
     if ($ex_data['intro_status'] == "0") {
             /*db_query("UPDATE {textbook_companion_example} SET approval_status = 1, approver_uid = %d, approval_date = %d WHERE id = %d", $user->uid, time(), $ex_data['example_id']);*/
+             $query_pro = db_update('arduino_projects_blog_proposal');
+            $query_pro->fields(array(
+                'is_intro_approved' => 1,
+            ));
+            $query_pro->condition('id', $ex_data['proposal_id']);
+            $query_pro_updated = $query_pro->execute();
+
             $query = db_update('arduino_projects_blog_introduction_step');
             $query->fields(array(
                 'approval_status' => 1,
+                'approver_uid' => $user->uid,
+                'approval_date' => time()
             ));
             $query->condition('proposal_id', $ex_data['proposal_id']);
             $num_updated = $query->execute();
@@ -338,7 +348,7 @@ function step_approval_form($form, &$form_state)
     );*/
     $form['message'] = array(
         '#type' => 'textarea',
-        '#title' => t('If Dis-Approved please specify reason for Dis-Approval'),
+        '#title' => t('Enter the reason for resubmitting the step/ dis-approving the step'),
         '#states' => array(
             'visible' => array(
                 array(
@@ -494,12 +504,12 @@ FOSSEE,IIT Bombay', array(
                 } //$form_state['values']['om_pssp_actions'] == 1
                 elseif ($form_state['values']['step_actions'] == 2)
                 {
-                    /*if (strlen(trim($form_state['values']['message'])) <= 30)
+                    if (strlen(trim($form_state['values']['message'])) <= 30)
                     {
                         form_set_error('message', t(''));
                         $msg = drupal_set_message("Please mention the reason for marking resubmit. Minimum 30 character required", 'error');
                         return $msg;
-                    }*/
+                    }
                     //pending review entire project 
 
                     $query = db_select('arduino_projects_blog_step');
@@ -574,80 +584,6 @@ FOSSEE,IIT Bombay', array(
                         drupal_set_message('Error sending email message.', 'error');
                     } *///!drupal_mail('om_pssp', 'standard', $email_to, language_default(), $params, $from, TRUE)
                 } //$form_state['values']['om_pssp_actions'] == 2
-                elseif ($form_state['values']['om_pssp_actions'] == 3) //disapprove and delete entire power system simulation project
-                {
-                    if (strlen(trim($form_state['values']['message'])) <= 30)
-                    {
-                        form_set_error('message', t(''));
-                        $msg = drupal_set_message("Please mention the reason for disapproval. Minimum 30 character required", 'error');
-                        return $msg;
-                    } //strlen(trim($form_state['values']['message'])) <= 30
-                    if (!user_access('om pssp bulk delete code'))
-                    {
-                        $msg = drupal_set_message(t('You do not have permission to Bulk Dis-Approved and Deleted Entire Lab.'), 'error');
-                        return $msg;
-                    } //!user_access('om_pssp bulk delete code')
-                    if (om_pssp_abstract_delete_project($form_state['values']['om_pssp_project'])) //////
-                    {
-                        drupal_set_message(t('Dis-Approved and Deleted Entire power system simulation project.'), 'status');
-                        $email_subject = t('[!site_name][power system simulation Project] Your uploaded power system simulation project have been marked as dis-approved', array(
-                        '!site_name' => variable_get('site_name', '')
-                    ));
-                    $email_body = array(
-                        0 => t('
-Dear !user_name,
-
-We regret to inform you that your simulation and abstract for Power Systems Simulation Project at FOSSEE with the following details have been disapproved:
-
-Full Name: ' . $user_info->name_title . ' ' . $user_info->contributor_name . '
-Email : ' . $user_data->mail . '
-University/Institute : ' . $user_info->university . '
-City : ' . $user_info->city . '
-
-Project Title  : ' . $user_info->project_title . '
-Description of the simulation: ' . $user_info->description .'
-
-Reason for dis-approval: ' . $form_state['values']['message'] . '
-
-Kindly note that the incorrect files will be deleted from all our databases.
-
-Thank you for participating in the Power Systems Simulation Project. You are welcome to submit a new proposal.
-
-Best Wishes,
-
-!site_name Power Systems Team,
-FOSSEE,IIT Bombay', array(
-                        '!site_name' => variable_get('site_name', ''),
-                        '!user_name' => $user_data->name
-                                            ))
-                    );
-                    $email_to = $user_data->mail;
-                    $from = variable_get('om_pssp_from_email', '');
-                    $bcc = variable_get('om_pssp_emails', '');
-                    $cc = variable_get('om_pssp_cc_emails', '');
-                    $params['standard']['subject'] = $email_subject;
-                    $params['standard']['body'] = $email_body;
-                    $params['standard']['headers'] = array(
-                        'From' => $from,
-                        'MIME-Version' => '1.0',
-                        'Content-Type' => 'text/plain; charset=UTF-8; format=flowed; delsp=yes',
-                        'Content-Transfer-Encoding' => '8Bit',
-                        'X-Mailer' => 'Drupal',
-                        'Cc' => $cc,
-                        'Bcc' => $bcc
-                    );
-                    if (!drupal_mail('om_pssp', 'standard', $email_to, language_default(), $params, $from, TRUE))
-                    {
-                        drupal_set_message('Error sending email message.', 'error');
-                    }
-                    } //om_pssp_abstract_delete_project($form_state['values']['om_pssp_project'])
-                    else
-                    {
-                        drupal_set_message(t('Error Dis-Approving and Deleting Entire power system simulation project.'), 'error');
-                    }
-                    // email 
-                    
-                } //$form_state['values']['om_pssp_actions'] == 3
             } //user_access('om_pssp project bulk manage code')
         return $msg;
     } //$form_state['clicked_button']['#value'] == 'Submit'
@@ -978,351 +914,6 @@ function _step_details($step_id)
     return $return_html;
 }
 
-function bulk_approval_form($form, &$form_state)
-{
-    $options_first = _bulk_list_of_project_titles();
-    $selected = isset($form_state['values']['project_title']) ? $form_state['values']['project_title'] : key($options_first);
-    $form = array();
-    $form['project_title'] = array(
-        '#type' => 'select',
-        '#title' => t('Title of the power system simulation project'),
-        '#options' => _bulk_list_of_project_titles(),
-        '#default_value' => $selected,
-        '#ajax' => array(
-            
-            'callback' => 'ajax_bulk_om_pssp_abstract_details_callback'
-        ),
-        '#suffix' => '<div id="ajax_selected_om_pssp"></div><div id="ajax_selected_om_pssp_pdf"></div>'
-    );
-    $form['project_actions'] = array(
-        '#type' => 'select',
-        '#title' => t('Please select action for the project'),
-        '#options' => _bulk_list_project_actions(),
-        '#default_value' => 0,
-        '#prefix' => '<div id="ajax_selected_om_pssp_action" style="color:red;">',
-        '#suffix' => '</div>',
-        '#states' => array(
-            'invisible' => array(
-                ':input[name="om_pssp_project"]' => array(
-                    'value' => 0
-                )
-            )
-        )
-    );
-    $form['message'] = array(
-        '#type' => 'textarea',
-        '#title' => t('Please specify the reason for marking resubmit/disapproval'),
-        '#prefix' => '<div id= "message_submit">',
-        '#states' => array(
-            'visible' => array(
-                array(
-                    ':input[name="project_actions"]' => array(
-                        'value' => 3
-                    )
-                ),
-                'or',
-                array(
-                    ':input[name="project_actions"]' => array(
-                        'value' => 2
-                    )
-                )
-            ),
-        'required' => array(
-                array(
-                    array(
-                        ':input[name="project_actions"]' => array(
-                            'value' => 2
-                        )
-                    ),
-                    'or',
-                    array(
-                        ':input[name="project_actions"]' => array(
-                            'value' => 3
-                        )
-                    ),
-                )
-            )
-        ),
-    );
-    $form['submit'] = array(
-        '#type' => 'submit',
-        '#value' => t('Submit'),
-        '#states' => array(
-            'invisible' => array(
-                ':input[name="lab"]' => array(
-                    'value' => 0
-                )
-            )
-        )
-    );
-    return $form;
-}
-function ajax_bulk_om_pssp_abstract_details_callback($form, $form_state)
-{
-    $commands = array();
-    $om_pssp_project_default_value = $form_state['values']['om_pssp_project'];
-    if ($om_pssp_project_default_value != 0)
-    {
-        //$commands[] = ajax_command_html('#ajax_selected_om_pssp', _om_pssp_details($om_pssp_project_default_value));
-        $form['om_pssp_actions']['#options'] = _bulk_list_project_actions();
-        $commands[] = ajax_command_replace('#ajax_selected_om_pssp_action', drupal_render($form['om_pssp_actions']));
-    } //$om_pssp_project_default_value != 0
-    else
-    {
-        $commands[] = ajax_command_html('#ajax_selected_om_pssp', '');
-        $commands[] = ajax_command_data('#ajax_selected_om_pssp', 'form_state_value_select', $form_state['values']['om_pssp_project']);
-    }
-    return array(
-        '#type' => 'ajax',
-        '#commands' => $commands
-    );
-}
-/************************************************************/
-function om_pssp_abstract_bulk_approval_form_submit($form, &$form_state)
-{
-    global $user;
-    $msg = '';
-    $root_path = om_pssp_path();
-    if ($form_state['clicked_button']['#value'] == 'Submit')
-    {
-        if ($form_state['values']['om_pssp_project'])
-        // om_pssp_abstract_del_lab_pdf($form_state['values']['om_pssp_project']);
-            if (user_access('om pssp bulk manage abstract'))
-            {
-                $query = db_select('om_pssp_proposal');
-                $query->fields('om_pssp_proposal');
-                $query->condition('id', $form_state['values']['om_pssp_project']);
-                $user_query = $query->execute();
-                $user_info = $user_query->fetchObject();
-                $user_data = user_load($user_info->uid);
-                if ($form_state['values']['om_pssp_actions'] == 1)
-                {
-                    // approving entire project //
-                    $query = db_select('om_pssp_submitted_abstracts');
-                    $query->fields('om_pssp_submitted_abstracts');
-                    $query->condition('proposal_id', $form_state['values']['om_pssp_project']);
-                    $abstracts_q = $query->execute();
-                    $experiment_list = '';
-                    while ($abstract_data = $abstracts_q->fetchObject())
-                    {
-                        db_query("UPDATE {om_pssp_submitted_abstracts} SET abstract_approval_status = 1, is_submitted = 1, approver_uid = :approver_uid WHERE id = :id", array(
-                            ':approver_uid' => $user->uid,
-                            ':id' => $abstract_data->id
-                        ));
-                        db_query("UPDATE {om_pssp_submitted_abstracts_file} SET file_approval_status = 1, approvar_uid = :approver_uid WHERE submitted_abstract_id = :submitted_abstract_id", array(
-                            ':approver_uid' => $user->uid,
-                            ':submitted_abstract_id' => $abstract_data->id
-                        ));
-                    } //$abstract_data = $abstracts_q->fetchObject()
-                    drupal_goto('powersystems/pssp/manage-proposal/all');
-                    drupal_set_message(t('Approved power system simulation project.'), 'status');
-                    // email 
-                    $email_subject = t('[!site_name][power system simulation Project] Your uploaded power system simulation project have been approved', array(
-                        '!site_name' => variable_get('site_name', '')
-                    ));
-                    $email_body = array(
-                        0 => t('
-
-Dear !user_name,
-
-Congratulations!
-Your simulation and abstract for Power Systems Simulation Project at FOSSEE with the following details have been approved.
-
-Full Name: ' . $user_info->name_title . ' ' . $user_info->contributor_name . '
-Email : ' . $user_data->mail . '
-University/Institute : ' . $user_info->university . '
-City : ' . $user_info->city . '
-
-Project Title  : ' . $user_info->project_title . '
-Description of the simulation: ' . $user_info->description .'
-
-Kindly send us the internship forms as early as possible for processing your honorarium on time. In case you have already sent these forms, please share the the consignment number or tracking id with us.
-
-Note: It will take upto 30 days from the time we receive your forms, to process your honorarium.
-
-
-Best Wishes,
-
-!site_name Power Systems Team,
-FOSSEE,IIT Bombay', array(
-                            '!site_name' => variable_get('site_name', ''),
-                            '!user_name' => $user_data->name
-                        ))
-                    );
-                    /** sending email when everything done **/
-                    $email_to = $user_data->mail;
-                    $from = variable_get('om_pssp_from_email', '');
-                    $bcc = variable_get('om_pssp_emails', '');
-                    $cc = variable_get('om_pssp_cc_emails', '');
-                    $params['standard']['subject'] = $email_subject;
-                    $params['standard']['body'] = $email_body;
-                    $params['standard']['headers'] = array(
-                        'From' => $from,
-                        'MIME-Version' => '1.0',
-                        'Content-Type' => 'text/plain; charset=UTF-8; format=flowed; delsp=yes',
-                        'Content-Transfer-Encoding' => '8Bit',
-                        'X-Mailer' => 'Drupal',
-                        'Cc' => $cc,
-                        'Bcc' => $bcc
-                    );
-                    if (!drupal_mail('om_pssp', 'standard', $email_to, language_default(), $params, $from, TRUE))
-                    {
-                        $msg = drupal_set_message('Error sending email message.', 'error');
-                    } //!drupal_mail('om_pssp', 'standard', $email_to, language_default(), $params, $from, TRUE)
-                } //$form_state['values']['om_pssp_actions'] == 1
-                elseif ($form_state['values']['om_pssp_actions'] == 2)
-                {
-                    if (strlen(trim($form_state['values']['message'])) <= 30)
-                    {
-                        form_set_error('message', t(''));
-                        $msg = drupal_set_message("Please mention the reason for marking resubmit. Minimum 30 character required", 'error');
-                        return $msg;
-                    }
-                    //pending review entire project 
-                    $query = db_select('om_pssp_submitted_abstracts');
-                    $query->fields('om_pssp_submitted_abstracts');
-                    $query->condition('proposal_id', $form_state['values']['om_pssp_project']);
-                    $abstracts_q = $query->execute();
-                    $experiment_list = '';
-                    while ($abstract_data = $abstracts_q->fetchObject())
-                    {
-                        db_query("UPDATE {om_pssp_submitted_abstracts} SET abstract_approval_status = 0, is_submitted = 0, approver_uid = :approver_uid WHERE id = :id", array(
-                            ':approver_uid' => $user->uid,
-                            ':id' => $abstract_data->id
-                        ));
-                        db_query("UPDATE {om_pssp_proposal} SET is_submitted = 0, approver_uid = :approver_uid WHERE id = :id", array(
-                            ':approver_uid' => $user->uid,
-                            ':id' => $abstract_data->proposal_id
-                        ));
-                        db_query("UPDATE {om_pssp_submitted_abstracts_file} SET file_approval_status = 0, approvar_uid = :approver_uid WHERE submitted_abstract_id = :submitted_abstract_id", array(
-                            ':approver_uid' => $user->uid,
-                            ':submitted_abstract_id' => $abstract_data->id
-                        ));
-                    } //$abstract_data = $abstracts_q->fetchObject()
-                    drupal_set_message(t('Resubmit the project files'), 'status');
-                    // email 
-                    $email_subject = t('[!site_name][power system simulation Project] Your uploaded power system simulation project have been marked as pending', array(
-                        '!site_name' => variable_get('site_name', '')
-                    ));
-                    $email_body = array(
-                        0 => t('
-
-Dear !user_name,
-
-Kindly resubmit the project files for the project: ' . $user_info->project_title . '.
-Description of the simulation: ' . $user_info->description . '
-
-Reason: ' . $form_state['values']['message'] . '
-
-Looking forward for the re-submission from you with the above suggested changes.
-
-Best Wishes,
-
-!site_name Power Systems Team,
-FOSSEE,IIT Bombay', array(
-                            '!site_name' => variable_get('site_name', ''),
-                            '!user_name' => $user_data->name
-                        ))
-                    );
-                    /** sending email when everything done **/
-                    $email_to = $user_data->mail;
-                    $from = variable_get('om_pssp_from_email', '');
-                    $bcc = variable_get('om_pssp_emails', '');
-                    $cc = variable_get('om_pssp_cc_emails', '');
-                    $params['standard']['subject'] = $email_subject;
-                    $params['standard']['body'] = $email_body;
-                    $params['standard']['headers'] = array(
-                        'From' => $from,
-                        'MIME-Version' => '1.0',
-                        'Content-Type' => 'text/plain; charset=UTF-8; format=flowed; delsp=yes',
-                        'Content-Transfer-Encoding' => '8Bit',
-                        'X-Mailer' => 'Drupal',
-                        'Cc' => $cc,
-                        'Bcc' => $bcc
-                    );
-                    if (!drupal_mail('om_pssp', 'standard', $email_to, language_default(), $params, $from, TRUE))
-                    {
-                        drupal_set_message('Error sending email message.', 'error');
-                    } //!drupal_mail('om_pssp', 'standard', $email_to, language_default(), $params, $from, TRUE)
-                } //$form_state['values']['om_pssp_actions'] == 2
-                elseif ($form_state['values']['om_pssp_actions'] == 3) //disapprove and delete entire power system simulation project
-                {
-                    if (strlen(trim($form_state['values']['message'])) <= 30)
-                    {
-                        form_set_error('message', t(''));
-                        $msg = drupal_set_message("Please mention the reason for disapproval. Minimum 30 character required", 'error');
-                        return $msg;
-                    } //strlen(trim($form_state['values']['message'])) <= 30
-                    if (!user_access('om pssp bulk delete code'))
-                    {
-                        $msg = drupal_set_message(t('You do not have permission to Bulk Dis-Approved and Deleted Entire Lab.'), 'error');
-                        return $msg;
-                    } //!user_access('om_pssp bulk delete code')
-                    if (om_pssp_abstract_delete_project($form_state['values']['om_pssp_project'])) //////
-                    {
-                        drupal_set_message(t('Dis-Approved and Deleted Entire power system simulation project.'), 'status');
-                        $email_subject = t('[!site_name][power system simulation Project] Your uploaded power system simulation project have been marked as dis-approved', array(
-                        '!site_name' => variable_get('site_name', '')
-                    ));
-                    $email_body = array(
-                        0 => t('
-Dear !user_name,
-
-We regret to inform you that your simulation and abstract for Power Systems Simulation Project at FOSSEE with the following details have been disapproved:
-
-Full Name: ' . $user_info->name_title . ' ' . $user_info->contributor_name . '
-Email : ' . $user_data->mail . '
-University/Institute : ' . $user_info->university . '
-City : ' . $user_info->city . '
-
-Project Title  : ' . $user_info->project_title . '
-Description of the simulation: ' . $user_info->description .'
-
-Reason for dis-approval: ' . $form_state['values']['message'] . '
-
-Kindly note that the incorrect files will be deleted from all our databases.
-
-Thank you for participating in the Power Systems Simulation Project. You are welcome to submit a new proposal.
-
-Best Wishes,
-
-!site_name Power Systems Team,
-FOSSEE,IIT Bombay', array(
-                        '!site_name' => variable_get('site_name', ''),
-                        '!user_name' => $user_data->name
-                                            ))
-                    );
-                    $email_to = $user_data->mail;
-                    $from = variable_get('om_pssp_from_email', '');
-                    $bcc = variable_get('om_pssp_emails', '');
-                    $cc = variable_get('om_pssp_cc_emails', '');
-                    $params['standard']['subject'] = $email_subject;
-                    $params['standard']['body'] = $email_body;
-                    $params['standard']['headers'] = array(
-                        'From' => $from,
-                        'MIME-Version' => '1.0',
-                        'Content-Type' => 'text/plain; charset=UTF-8; format=flowed; delsp=yes',
-                        'Content-Transfer-Encoding' => '8Bit',
-                        'X-Mailer' => 'Drupal',
-                        'Cc' => $cc,
-                        'Bcc' => $bcc
-                    );
-                    if (!drupal_mail('om_pssp', 'standard', $email_to, language_default(), $params, $from, TRUE))
-                    {
-                        drupal_set_message('Error sending email message.', 'error');
-                    }
-                    } //om_pssp_abstract_delete_project($form_state['values']['om_pssp_project'])
-                    else
-                    {
-                        drupal_set_message(t('Error Dis-Approving and Deleting Entire power system simulation project.'), 'error');
-                    }
-                    // email 
-                    
-                } //$form_state['values']['om_pssp_actions'] == 3
-            } //user_access('om_pssp project bulk manage code')
-        return $msg;
-    } //$form_state['clicked_button']['#value'] == 'Submit'
-}
 /**********************************************************/
 function _bulk_list_of_project_titles()
 {
@@ -1438,4 +1029,207 @@ function _om_pssp_details($om_pssp_proposal_id)
     $return_html .= '<strong>Upload the  power system simulation for the developed process:</strong><br />' . $abstracts_query_process_filename . '<br /><br />';
     $return_html .= $download_om_pssp;
     return $return_html;
+}
+
+function project_design_files_approval()
+{
+    /* get a list of unapproved introductions */
+    $rows = array();
+    $query = db_select('arduino_projects_blog_proposal');
+    $query->fields('arduino_projects_blog_proposal');
+    $query->condition('approval_status', 1);
+    $query->condition('submitted_steps', 1);
+    $query->condition('is_design_files_approved',0);
+    $proposal_q = $query->execute();
+    while($proposal_data = $proposal_q->fetchObject()){
+    $intro_query = db_select('arduino_projects_blog_project_files');
+    $intro_query->fields('arduino_projects_blog_project_files');
+    $intro_query->condition('proposal_id', $proposal_data->id);
+    //$intro_query->condition('is_submitted', 1);
+    //$intro_query->condition('approval_status', 0);
+    $intro_query_result  = $intro_query->execute();
+    $intro_query_data = $intro_query_result->fetchObject();
+         $rows[] = array(
+            $proposal_data->project_title,
+            $proposal_data->contributor_name,
+            l('Edit', 'arduino-projects/code-approval/approve-design-files/' . $intro_query_data->id)
+        );
+    }
+    
+    /* check if there are any pending proposals */
+    if (!$rows) {
+        drupal_set_message(t('There are no project design files to approve'), 'status');
+        return '';
+    }
+    $header = array(
+        'Title of the Project',
+        'Contributor Name',
+        'Actions'
+    );
+    $output = theme('table', array(
+        'header' => $header,
+        'rows' => $rows
+    ));
+    return $output;
+}
+
+function project_design_files_approval_form($form, &$form_state)
+{
+    /* get a list of unapproved chapters */
+    $id = arg(3);
+    $query = db_select('arduino_projects_blog_project_files');
+    $query->fields('arduino_projects_blog_project_files');
+    $query->condition('id', $id);
+    $result = $query->execute();
+    $intro_data = $result->fetchObject();
+    $query_proposal = db_select('arduino_projects_blog_proposal');
+    $query_proposal->fields('arduino_projects_blog_proposal');
+    $query_proposal->condition('id', $intro_data->proposal_id);
+    $proposal_data = $query_proposal->execute()->fetchObject();
+    $form['#tree'] = TRUE;
+    $form['contributor'] = array(
+        '#type' => 'item',
+        '#markup' => $proposal_data->contributor_name,
+        '#title' => t('Contributor Name')
+    );
+    $form['project_title'] = array(
+        '#type' => 'item',
+        '#markup' => $proposal_data->project_title,
+        '#title' => t('Title of the Project')
+    );
+    
+    /* get example data */
+    /*$example_q = db_query("SELECT * FROM {textbook_companion_example} WHERE chapter_id = %d AND approval_status = 0", $chapter_id);*/
+    
+        /*$form['example_details'][$example_data->id] = array(
+            '#type' => 'fieldset',
+            '#collapsible' => FALSE,
+            '#collapsed' => TRUE
+        );*/
+        
+        $form['download_design_file'] = array(
+            '#type' => 'item',
+            '#title' => t('Click to download the project design file uploaded by the user'),
+            '#markup' => l('Download File', 'arduino-projects/download/project-design-file/' . $intro_data->id)
+        );
+        $form['design_file_status'] = array(
+            '#type' => 'radios',
+            '#options' => array(
+                'Approved',
+                'Dis-approved'
+            )
+        );
+        $form['message'] = array(
+            '#type' => 'textarea',
+            '#size' => 2500,
+            '#maxlength' => 2500,
+            '#title' => t('Reason for dis-approval')
+        );
+        $form['proposal_id'] = array(
+            '#type' => 'hidden',
+            '#value' => $proposal_data->id
+        );
+    $form['submit'] = array(
+        '#type' => 'submit',
+        '#value' => t('Submit')
+    );
+    $form['back_to_list'] = array(
+        '#type' => 'item',
+        '#markup' => l('Back to Code Approval List', 'arduino-projects/code-approval/project-design-files')
+    );
+    return $form;
+}
+
+function project_design_files_approval_form_submit($form, &$form_state){
+    global $user;
+    $proposal_id = $form_state['values']['proposal_id'];
+    $query = db_select('arduino_projects_blog_project_files');
+        $query->fields('arduino_projects_blog_project_files');
+        $query->condition('proposal_id', $proposal_id);
+        $result = $query->execute();
+        $intro_data = $result->fetchObject();
+     $query = db_select('arduino_projects_blog_proposal');
+        $query->fields('arduino_projects_blog_proposal');
+        $query->condition('id', $intro_data->proposal_id);
+        $result = $query->execute();
+        $proposal_data = $result->fetchObject();
+    $user_data = user_load($proposal_data->uid);
+    $ex_data = $form_state['values'];
+    if ($ex_data['design_file_status'] == "0") {
+            /*db_query("UPDATE {textbook_companion_example} SET approval_status = 1, approver_uid = %d, approval_date = %d WHERE id = %d", $user->uid, time(), $ex_data['example_id']);*/
+             $query_pro = db_update('arduino_projects_blog_proposal');
+            $query_pro->fields(array(
+                'is_design_files_approved' => 1,
+            ));
+            $query_pro->condition('id', $ex_data['proposal_id']);
+            $query_pro_updated = $query_pro->execute();
+
+            $query = db_update('arduino_projects_blog_project_files');
+            $query->fields(array(
+                'approval_status' => 1,
+                'approver_uid' => $user->uid,
+                'approval_date' => time()
+            ));
+            $query->condition('proposal_id', $ex_data['proposal_id']);
+            $num_updated = $query->execute();
+            /* sending email */
+            $email_to = $user_data->mail;
+            $from = variable_get('textbook_companion_from_email', '');
+            $bcc = variable_get('textbook_companion_emails', '');
+            $cc = variable_get('textbook_companion_cc_emails', '');
+            $param['codable_example_approved']['proposal_id'] = $ex_data['proposal_id'];
+            $param['codable_example_approved']['user_id'] = $user_data->uid;
+            $param['codable_example_approved']['headers'] = array(
+                'From' => $from,
+                'MIME-Version' => '1.0',
+                'Content-Type' => 'text/plain; charset=UTF-8; format=flowed; delsp=yes',
+                'Content-Transfer-Encoding' => '8Bit',
+                'X-Mailer' => 'Drupal',
+                'Cc' => $cc,
+                'Bcc' => $bcc
+            );
+            if (!drupal_mail('textbook_companion', 'intro_approved', $email_to, language_default(), $param, $from, TRUE))
+                drupal_set_message('Error sending email message.', 'error');
+            drupal_set_message('Project design file approved.', 'status');
+            drupal_goto('arduino-projects/code-approval/project-design-files');
+        } else if ($ex_data['design_file_status'] == "1") {
+            
+                /* sending email */
+                $query = db_update('arduino_projects_blog_project_files');
+            $query->fields(array(
+                'approval_status' => 0,
+                'disapproval_message' => $ex_data['message']
+            ));
+            $query->condition('proposal_id', $ex_data['proposal_id']);
+            $num_updated = $query->execute();
+             $pro_query = db_update('arduino_projects_blog_proposal');
+            $pro_query->fields(array(
+                'submitted_steps' => 0
+                ));
+            $pro_query->condition('id', $ex_data['proposal_id']);
+            $pro_updated = $pro_query->execute();
+                $email_to = $user_data->mail;
+                $from = variable_get('textbook_companion_from_email', '');
+                $bcc = variable_get('textbook_companion_emails', '');
+                $cc = variable_get('textbook_companion_cc_emails', '');
+                $param['codable_example_disapproved']['proposal_id'] = $ex_data['proposal_id'];
+                $param['codable_example_disapproved']['user_id'] = $user_data->uid;
+                $param['codable_example_disapproved']['message'] = $ex_data['message'];
+                $param['codable_example_disapproved']['headers'] = array(
+                    'From' => $from,
+                    'MIME-Version' => '1.0',
+                    'Content-Type' => 'text/plain; charset=UTF-8; format=flowed; delsp=yes',
+                    'Content-Transfer-Encoding' => '8Bit',
+                    'X-Mailer' => 'Drupal',
+                    'Cc' => $cc,
+                    'Bcc' => $bcc
+                );
+                //if (!drupal_mail('textbook_companion', 'intro_disapproved', $email_to, language_default(), $param, $from, TRUE))
+                  //  drupal_set_message('Error sending email message.', 'error');
+                drupal_set_message('Project design file has been disapproved and user has been notified.', 'status');
+                drupal_goto('arduino-projects/code-approval/project-design-files');
+            }
+            else {
+                drupal_set_message('Error in updating the status. Please contact administrator.', 'error');
+            }
 }
